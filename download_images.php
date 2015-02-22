@@ -23,8 +23,6 @@ if(!mkdir($dir)){
 	exit(-1);
 }
 
-$handles = array();
-
 $first = TRUE;
 while($row = fgetcsv($fh)){
 	if($first){
@@ -32,22 +30,43 @@ while($row = fgetcsv($fh)){
 		continue;		
 	}
 	$handle = $row[0];
-	if(strlen($row[24])){
+	if(strlen($row[24])){		
 		$url = $row[24];
-		if(!isset($handles[$handle])){
-			$handles[$handle] = 1;
-		}
-
-		$info = parse_url($url);
-		$path = $info['path'];
-		$ext = pathinfo($path, PATHINFO_EXTENSION);
-
-
-		## Download the file
-		$filename = $dir . '/' . $handle . '_' . $handles[$handle] . '.' . $ext;
-		echo "Downloading " . $url . " and saving to " . $filename . "\n";
-		$data = file_get_contents($url);
-		file_put_contents($filename, $data);
-		$handles[$handle] += 1;
+		download_imag_url($dir, $handle, $url);		
 	}
+
+	if(strlen($row[42])){
+		$variant_url = $row[42];
+		download_imag_url($dir, $handle, $variant_url);
+	}
+}
+
+function download_imag_url($dir, $handle, $url){
+	static $handles = array();
+	static $downloaded_md5 = array();
+
+
+	$url = str_replace('https://', 'http://', $url);
+
+	if(!isset($handles[$handle])){
+		$handles[$handle] = 1;
+	}
+
+	$info = parse_url($url);
+	$path = $info['path'];
+	$ext = pathinfo($path, PATHINFO_EXTENSION);
+
+
+	## Download the file
+	$filename = $dir . '/' . $handle . '_' . $handles[$handle] . '.' . $ext;	
+	$data = file_get_contents($url);
+	$md5 = md5($data);
+	if(isset($downloaded_md5[$md5])){
+		echo "Already downloaded " . $url . "\n";
+		return;
+	}
+	$downloaded_md5[$md5] = TRUE;
+	echo "Downloading " . $url . " and saving to " . $filename . "\n";
+	file_put_contents($filename, $data);
+	$handles[$handle] += 1;
 }
